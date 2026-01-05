@@ -8,7 +8,7 @@ from .config import settings
 from .db import SessionLocal
 from .models import AutoUpdateSchedule, Device
 from .scales_client import fetch_products_and_cache, push_cache_to_scales, save_cached_products
-from tst.scales.exceptions import DeviceError
+from scales.exceptions import DeviceError
 
 
 scheduler = BackgroundScheduler(timezone=settings.scheduler_timezone)
