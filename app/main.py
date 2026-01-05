@@ -23,7 +23,7 @@ from .scales_client import (
     push_cache_to_scales,
 )
 from .scheduler import scheduler, rebuild_jobs_from_db
-from tst.scales.exceptions import DeviceError
+from scales.exceptions import DeviceError
 from fastapi.middleware.cors import CORSMiddleware
 
 
