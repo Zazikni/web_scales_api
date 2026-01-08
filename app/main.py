@@ -429,6 +429,11 @@ def get_auto_update(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "get auto-update requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
     sch = (
         db.query(AutoUpdateSchedule)
@@ -436,6 +441,11 @@ def get_auto_update(
         .one_or_none()
     )
     if not sch:
+        logger.info(
+            "auto-update config missing | user_id=%s | device_id=%s | action=create_default",
+            user.id,
+            dev.id,
+        )
         sch = AutoUpdateSchedule(
             device_id=dev.id,
             enabled=False,
@@ -447,7 +457,13 @@ def get_auto_update(
         db.add(sch)
         db.commit()
         db.refresh(sch)
-
+    logger.info(
+        "get auto-update success | user_id=%s | device_id=%s | enabled=%s | interval_minutes=%s",
+        user.id,
+        dev.id,
+        sch.enabled,
+        sch.interval_minutes,
+    )
     return AutoUpdateConfig(
         enabled=sch.enabled,
         interval_minutes=sch.interval_minutes,
