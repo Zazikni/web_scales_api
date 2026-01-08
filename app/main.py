@@ -285,11 +285,31 @@ def fetch_products(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "fetch products requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
     try:
         products = fetch_products_and_cache(db, dev)
+        count = "n/a"
+        if isinstance(products, dict) and isinstance(products.get("products"), list):
+            count = len(products["products"])
+        logger.info(
+            "fetch products success | user_id=%s | device_id=%s | count=%s",
+            user.id,
+            device_id,
+            count,
+        )
         return ProductsResponse(products=products)
     except DeviceError as e:
+        logger.warning(
+            "fetch products failed | user_id=%s | device_id=%s | status=503 | err=%s",
+            user.id,
+            device_id,
+            str(e),
+        )
         raise HTTPException(status_code=503, detail=str(e))
 
 
