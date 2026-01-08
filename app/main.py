@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
-from sqlalchemy.testing.plugin.plugin_base import logging
 
 import logging
 
@@ -10,9 +9,13 @@ from .config import settings
 from .db import Base, engine, get_db
 from .models import User, Device, AutoUpdateSchedule
 from .schemas import (
-    RegisterRequest, TokenResponse,
-    DeviceCreate, DeviceUpdate, DeviceOut,
-    ProductsResponse, ProductPatchRequest,
+    RegisterRequest,
+    TokenResponse,
+    DeviceCreate,
+    DeviceUpdate,
+    DeviceOut,
+    ProductsResponse,
+    ProductPatchRequest,
     AutoUpdateConfig,
 )
 from .security import hash_password, verify_password, create_access_token
@@ -25,18 +28,22 @@ from .scales_client import (
     push_cache_to_scales,
 )
 from .scheduler import scheduler, rebuild_jobs_from_db
+from .logging_config import setup_logging
 from scales.exceptions import DeviceError
 from fastapi.middleware.cors import CORSMiddleware
 
 
+setup_logging(settings.log_level)
+logger = logging.getLogger("app.main")
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Scales API", version="1.0.0")
-logging.info("Application started")
-logging.info("CORS origins: %s", settings.cors_allow_origins)
-logging.info("Database URL: %s", settings.database_url)
+logger.info("Application started")
+logger.info("CORS origins: %s", settings.cors_allow_origins)
+logger.info("Database URL: %s", settings.database_url)
 
-origins = settings.cors_allow_origins,
+origins = (settings.cors_allow_origins,)
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,7 +56,6 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    logging.basicConfig(level=logging.INFO)
     scheduler.start()
     rebuild_jobs_from_db()
 
@@ -59,14 +65,16 @@ def shutdown():
     scheduler.shutdown(wait=False)
 
 
-
 def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
-    dev = db.query(Device).filter(Device.id == device_id, Device.owner_id == user_id).one_or_none()
+    dev = (
+        db.query(Device)
+        .filter(Device.id == device_id, Device.owner_id == user_id)
+        .one_or_none()
+    )
     if not dev:
         # 404 всегда, чтобы пользователь не мог отличить “не моё” от “не существует”
         raise HTTPException(status_code=404, detail="Device not found")
     return dev
-
 
 
 @app.post("/auth/register", status_code=201)
@@ -82,8 +90,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"id": user.id, "email": user.email}
 
 
-
-
 @app.post("/auth/login", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -97,10 +103,8 @@ def login(
     return TokenResponse(access_token=token)
 
 
-
-
-
 # ---------- devices ----------
+
 
 @app.get("/devices", response_model=list[DeviceOut])
 def list_devices(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -108,7 +112,11 @@ def list_devices(db: Session = Depends(get_db), user: User = Depends(get_current
 
 
 @app.post("/devices", response_model=DeviceOut, status_code=201)
-def create_device(req: DeviceCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def create_device(
+    req: DeviceCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = Device(
         owner_id=user.id,
         name=req.name,
@@ -125,11 +133,20 @@ def create_device(req: DeviceCreate, db: Session = Depends(get_db), user: User =
         db.commit()
     except Exception:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Device with this name already exists")
+        raise HTTPException(
+            status_code=409, detail="Device with this name already exists"
+        )
 
     db.refresh(dev)
 
-    sch = AutoUpdateSchedule(device_id=dev.id, enabled=False, interval_minutes=1440, last_run_utc=None, last_status=None, last_error=None)
+    sch = AutoUpdateSchedule(
+        device_id=dev.id,
+        enabled=False,
+        interval_minutes=1440,
+        last_run_utc=None,
+        last_status=None,
+        last_error=None,
+    )
     db.add(sch)
     db.commit()
 
@@ -138,12 +155,21 @@ def create_device(req: DeviceCreate, db: Session = Depends(get_db), user: User =
 
 
 @app.get("/devices/{device_id}", response_model=DeviceOut)
-def get_device(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_device(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     return get_user_device_or_404(db, user.id, device_id)
 
 
 @app.put("/devices/{device_id}", response_model=DeviceOut)
-def update_device(device_id: int, req: DeviceUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_device(
+    device_id: int,
+    req: DeviceUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
 
     if req.name is not None:
@@ -170,7 +196,11 @@ def update_device(device_id: int, req: DeviceUpdate, db: Session = Depends(get_d
 
 
 @app.delete("/devices/{device_id}", status_code=204)
-def delete_device(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def delete_device(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
     db.delete(dev)
     db.commit()
@@ -180,8 +210,13 @@ def delete_device(device_id: int, db: Session = Depends(get_db), user: User = De
 
 # ---------- products ----------
 
+
 @app.get("/devices/{device_id}/products", response_model=ProductsResponse)
-def fetch_products(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def fetch_products(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
     try:
         products = fetch_products_and_cache(db, dev)
@@ -191,7 +226,11 @@ def fetch_products(device_id: int, db: Session = Depends(get_db), user: User = D
 
 
 @app.get("/devices/{device_id}/products/cached", response_model=ProductsResponse)
-def get_cached_products(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_cached_products(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
     return ProductsResponse(products=load_cached_products(dev))
 
@@ -228,7 +267,11 @@ def patch_product_by_plu(
 
 
 @app.post("/devices/{device_id}/upload", status_code=200)
-def upload_cache(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def upload_cache(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
     try:
         push_cache_to_scales(db, dev)
@@ -239,12 +282,28 @@ def upload_cache(device_id: int, db: Session = Depends(get_db), user: User = Dep
 
 # ---------- auto update ----------
 
+
 @app.get("/devices/{device_id}/auto-update", response_model=AutoUpdateConfig)
-def get_auto_update(device_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_auto_update(
+    device_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
-    sch = db.query(AutoUpdateSchedule).filter(AutoUpdateSchedule.device_id == dev.id).one_or_none()
+    sch = (
+        db.query(AutoUpdateSchedule)
+        .filter(AutoUpdateSchedule.device_id == dev.id)
+        .one_or_none()
+    )
     if not sch:
-        sch = AutoUpdateSchedule(device_id=dev.id, enabled=False, interval_minutes=60, last_run_utc=None, last_status=None, last_error=None)
+        sch = AutoUpdateSchedule(
+            device_id=dev.id,
+            enabled=False,
+            interval_minutes=60,
+            last_run_utc=None,
+            last_status=None,
+            last_error=None,
+        )
         db.add(sch)
         db.commit()
         db.refresh(sch)
@@ -259,12 +318,28 @@ def get_auto_update(device_id: int, db: Session = Depends(get_db), user: User = 
 
 
 @app.put("/devices/{device_id}/auto-update", response_model=AutoUpdateConfig)
-def set_auto_update(device_id: int, req: AutoUpdateConfig, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def set_auto_update(
+    device_id: int,
+    req: AutoUpdateConfig,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     dev = get_user_device_or_404(db, user.id, device_id)
 
-    sch = db.query(AutoUpdateSchedule).filter(AutoUpdateSchedule.device_id == dev.id).one_or_none()
+    sch = (
+        db.query(AutoUpdateSchedule)
+        .filter(AutoUpdateSchedule.device_id == dev.id)
+        .one_or_none()
+    )
     if not sch:
-        sch = AutoUpdateSchedule(device_id=dev.id, enabled=req.enabled, interval_minutes=req.interval_minutes, last_run_utc=None, last_status=None, last_error=None)
+        sch = AutoUpdateSchedule(
+            device_id=dev.id,
+            enabled=req.enabled,
+            interval_minutes=req.interval_minutes,
+            last_run_utc=None,
+            last_status=None,
+            last_error=None,
+        )
     else:
         sch.enabled = req.enabled
         sch.interval_minutes = req.interval_minutes

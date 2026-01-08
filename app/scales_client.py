@@ -7,7 +7,9 @@ from .models import Device
 
 from scales import Scales
 from scales.exceptions import DeviceError
+import logging
 
+logger = logging.getLogger("app.scales_client")
 
 _fernet = Fernet(settings.fernet_key.encode("utf-8"))
 
@@ -41,7 +43,9 @@ def load_cached_products(device: Device) -> dict:
     return json.loads(device.products_cache_json)
 
 
-def save_cached_products(db: Session, device: Device, products: dict, *, dirty: bool) -> None:
+def save_cached_products(
+    db: Session, device: Device, products: dict, *, dirty: bool
+) -> None:
     device.products_cache_json = json.dumps(products, ensure_ascii=False)
     device.cached_dirty = dirty
     db.add(device)
@@ -62,7 +66,9 @@ def validate_plu_uniqueness(products: dict) -> None:
             continue
         key = str(p["plu"])
         if key in seen:
-            raise DeviceError(f"Нарушение уникальности plu в рамках устройства: plu={key}")
+            raise DeviceError(
+                f"Нарушение уникальности plu в рамках устройства: plu={key}"
+            )
         seen.add(key)
 
 
@@ -76,7 +82,9 @@ def fetch_products_and_cache(db: Session, device: Device) -> dict:
 
 def push_cache_to_scales(db: Session, device: Device) -> None:
     if not device.products_cache_json:
-        raise DeviceError("Нет кэша товаров для загрузки. Сначала выполните выгрузку товаров с весов.")
+        raise DeviceError(
+            "Нет кэша товаров для загрузки. Сначала выполните выгрузку товаров с весов."
+        )
     scales = get_scales(device)
     products = load_cached_products(device)
     validate_plu_uniqueness(products)

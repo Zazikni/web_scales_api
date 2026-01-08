@@ -7,9 +7,15 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .db import SessionLocal
 from .models import AutoUpdateSchedule, Device
-from .scales_client import fetch_products_and_cache, push_cache_to_scales, save_cached_products
+from .scales_client import (
+    fetch_products_and_cache,
+    push_cache_to_scales,
+    save_cached_products,
+)
 from scales.exceptions import DeviceError
+import logging
 
+logger = logging.getLogger("app.scheduler")
 
 scheduler = BackgroundScheduler(timezone=settings.scheduler_timezone)
 
@@ -43,7 +49,11 @@ def auto_update_job(device_id: int) -> None:
         if not device:
             return
 
-        sch = db.query(AutoUpdateSchedule).filter(AutoUpdateSchedule.device_id == device_id).one_or_none()
+        sch = (
+            db.query(AutoUpdateSchedule)
+            .filter(AutoUpdateSchedule.device_id == device_id)
+            .one_or_none()
+        )
         if not sch or not sch.enabled:
             return
 
@@ -63,27 +73,35 @@ def auto_update_job(device_id: int) -> None:
         db.add(sch)
         db.commit()
 
-        logging.info("Auto-update OK: device_id=%d name=%s", device_id, device.name)
+        logger.info("Auto-update OK: device_id=%d name=%s", device_id, device.name)
 
     except DeviceError as e:
-        sch = db.query(AutoUpdateSchedule).filter(AutoUpdateSchedule.device_id == device_id).one_or_none()
+        sch = (
+            db.query(AutoUpdateSchedule)
+            .filter(AutoUpdateSchedule.device_id == device_id)
+            .one_or_none()
+        )
         if sch:
             sch.last_run_utc = utc_now_str()
             sch.last_status = "ERROR"
             sch.last_error = str(e)
             db.add(sch)
             db.commit()
-        logging.error("Auto-update DeviceError device_id=%d: %s", device_id, e)
+        logger.error("Auto-update DeviceError device_id=%d: %s", device_id, e)
 
     except Exception as e:
-        sch = db.query(AutoUpdateSchedule).filter(AutoUpdateSchedule.device_id == device_id).one_or_none()
+        sch = (
+            db.query(AutoUpdateSchedule)
+            .filter(AutoUpdateSchedule.device_id == device_id)
+            .one_or_none()
+        )
         if sch:
             sch.last_run_utc = utc_now_str()
             sch.last_status = "ERROR"
             sch.last_error = f"Unexpected: {e}"
             db.add(sch)
             db.commit()
-        logging.exception("Auto-update unexpected device_id=%d: %s", device_id, e)
+        logger.exception("Auto-update unexpected device_id=%d: %s", device_id, e)
 
     finally:
         db.close()

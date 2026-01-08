@@ -15,5 +15,7 @@ class Settings(BaseSettings):
     fernet_key: str
     scheduler_timezone: str
     cors_allow_origins: List[str] = []
+    log_level: str = "INFO"
+
 
 settings = Settings()
