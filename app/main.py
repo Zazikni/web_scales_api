@@ -341,11 +341,24 @@ def patch_product_by_plu(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "patch product requested | user_id=%s | device_id=%s | plu=%s",
+        user.id,
+        device_id,
+        plu,
+    )
+
     dev = get_user_device_or_404(db, user.id, device_id)
     products = load_cached_products(dev)
 
     items = products.get("products", [])
     if not isinstance(items, list):
+        logger.error(
+            "patch product failed | user_id=%s | device_id=%s | plu=%s | reason=invalid_cache_format",
+            user.id,
+            device_id,
+            plu,
+        )
         raise HTTPException(status_code=400, detail="Invalid cached products format")
 
     found = False
@@ -358,9 +371,22 @@ def patch_product_by_plu(
             break
 
     if not found:
+        logger.warning(
+            "patch product failed | user_id=%s | device_id=%s | plu=%s | reason=not_found",
+            user.id,
+            device_id,
+            plu,
+        )
         raise HTTPException(status_code=404, detail="Product not found (plu)")
 
     save_cached_products(db, dev, products, dirty=True)
+    logger.info(
+        "patch product success | user_id=%s | device_id=%s | plu=%s | fields_updated=%s",
+        user.id,
+        device_id,
+        plu,
+        len(req.fields),
+    )
     return ProductsResponse(products=products)
 
 
