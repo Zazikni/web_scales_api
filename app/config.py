@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +14,6 @@ class Settings(BaseSettings):
 
     fernet_key: str
     scheduler_timezone: str
-
+    cors_allow_origins: List[str] = []
 
 settings = Settings()

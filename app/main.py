@@ -5,6 +5,8 @@ from fastapi import Depends
 from sqlalchemy.testing.plugin.plugin_base import logging
 
 import logging
+
+from .config import settings
 from .db import Base, engine, get_db
 from .models import User, Device, AutoUpdateSchedule
 from .schemas import (
@@ -30,11 +32,11 @@ from fastapi.middleware.cors import CORSMiddleware
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Scales API", version="1.0.0")
+logging.info("Application started")
+logging.info("CORS origins: %s", settings.cors_allow_origins)
+logging.info("Database URL: %s", settings.database_url)
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+origins = settings.cors_allow_origins,
 
 app.add_middleware(
     CORSMiddleware,
