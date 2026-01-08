@@ -396,11 +396,27 @@ def upload_cache(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "upload cache requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
     try:
         push_cache_to_scales(db, dev)
+        logger.info(
+            "upload cache success | user_id=%s | device_id=%s",
+            user.id,
+            device_id,
+        )
         return {"status": "ok"}
     except DeviceError as e:
+        logger.warning(
+            "upload cache failed | user_id=%s | device_id=%s | status=503 | err=%s",
+            user.id,
+            device_id,
+            str(e),
+        )
         raise HTTPException(status_code=503, detail=str(e))
 
 
