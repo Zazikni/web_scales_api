@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     database_url: str
-
+    debug: bool = False
     jwt_secret_key: str
     jwt_algorithm: str
     jwt_access_token_minutes: int

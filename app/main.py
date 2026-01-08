@@ -38,7 +38,13 @@ logger = logging.getLogger("app.main")
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Scales API", version="1.0.0")
+app = FastAPI(
+    title="Scales API",
+    version="1.0.0",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+)
 logger.info("Application started")
 logger.info("CORS origins: %s", settings.cors_allow_origins)
 logger.info("Database URL: %s", settings.database_url)
