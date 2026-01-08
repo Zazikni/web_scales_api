@@ -130,6 +130,14 @@ def create_device(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "create device requested | user_id=%s | name=%s | ip=%s | port=%s | protocol=%s",
+        user.id,
+        req.name,
+        req.ip,
+        req.port,
+        req.protocol,
+    )
     dev = Device(
         owner_id=user.id,
         name=req.name,
@@ -146,6 +154,11 @@ def create_device(
         db.commit()
     except Exception:
         db.rollback()
+        logger.warning(
+            "create device failed | user_id=%s | name=%s | reason=name_conflict",
+            user.id,
+            req.name,
+        )
         raise HTTPException(
             status_code=409, detail="Device with this name already exists"
         )
@@ -162,7 +175,12 @@ def create_device(
     )
     db.add(sch)
     db.commit()
-
+    logger.info(
+        "create device success | user_id=%s | device_id=%s | name=%s",
+        user.id,
+        dev.id,
+        dev.name,
+    )
     rebuild_jobs_from_db()
     return dev
 
