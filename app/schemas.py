@@ -17,7 +17,6 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-
 class DeviceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=500)
@@ -47,7 +46,6 @@ class DeviceOut(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 
 class ProductsResponse(BaseModel):
