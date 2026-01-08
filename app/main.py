@@ -319,7 +319,17 @@ def get_cached_products(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "get cached products requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
+    logger.info(
+        "get cached products success | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     return ProductsResponse(products=load_cached_products(dev))
 
 
