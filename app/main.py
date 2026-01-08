@@ -191,7 +191,19 @@ def get_device(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return get_user_device_or_404(db, user.id, device_id)
+    logger.info(
+        "get device requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
+    device = get_user_device_or_404(db, user.id, device_id)
+
+    logger.info(
+        "get device success | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
+    return device
 
 
 @app.put("/devices/{device_id}", response_model=DeviceOut)
