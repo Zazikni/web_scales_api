@@ -43,7 +43,7 @@ logger.info("Application started")
 logger.info("CORS origins: %s", settings.cors_allow_origins)
 logger.info("Database URL: %s", settings.database_url)
 
-origins = (settings.cors_allow_origins,)
+origins = settings.cors_allow_origins
 
 app.add_middleware(
     CORSMiddleware,
