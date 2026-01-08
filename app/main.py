@@ -81,12 +81,14 @@ def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     exists = db.query(User).filter(User.email == req.email).one_or_none()
     if exists:
+        logger.warning("register failed | email=%s | reason=email_taken", req.email)
         raise HTTPException(status_code=409, detail="Email already registered")
 
     user = User(email=req.email, password_hash=hash_password(req.password))
     db.add(user)
     db.commit()
     db.refresh(user)
+    logger.info("register success | user_id=%s | email=%s", user.id, user.email)
     return {"id": user.id, "email": user.email}
 
 
@@ -115,6 +117,10 @@ def login(
 
 @app.get("/devices", response_model=list[DeviceOut])
 def list_devices(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    logger.info(
+        "list devices | user_id=%s",
+        user.id,
+    )
     return db.query(Device).filter(Device.owner_id == user.id).all()
 
 
