@@ -213,6 +213,11 @@ def update_device(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "update device requested | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
 
     if req.name is not None:
@@ -233,8 +238,18 @@ def update_device(
         db.commit()
     except Exception:
         db.rollback()
+        logger.warning(
+            "update device failed | user_id=%s | device_id=%s | reason=name_conflict",
+            user.id,
+            device_id,
+        )
         raise HTTPException(status_code=409, detail="Device name conflict")
     db.refresh(dev)
+    logger.info(
+        "update device success | user_id=%s | device_id=%s",
+        user.id,
+        device_id,
+    )
     return dev
 
 
