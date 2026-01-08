@@ -458,7 +458,7 @@ def get_auto_update(
         sch = AutoUpdateSchedule(
             device_id=dev.id,
             enabled=False,
-            interval_minutes=60,
+            interval_minutes=settings.scheduler_interval,
             last_run_utc=None,
             last_status=None,
             last_error=None,
