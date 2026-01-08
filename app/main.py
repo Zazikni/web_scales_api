@@ -97,8 +97,15 @@ def login(
 ):
     user = db.query(User).filter(User.email == form_data.username).one_or_none()
     if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
+        logger.warning(
+            "login failed | email=%s",
+            form_data.username,
+        )
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    logger.info(
+        "login success | user_id=%s",
+        user.id,
+    )
     token = create_access_token(str(user.id))
     return TokenResponse(access_token=token)
 
