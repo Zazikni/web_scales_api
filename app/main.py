@@ -480,6 +480,13 @@ def set_auto_update(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    logger.info(
+        "set auto-update requested | user_id=%s | device_id=%s | enabled=%s | interval_minutes=%s",
+        user.id,
+        device_id,
+        req.enabled,
+        req.interval_minutes,
+    )
     dev = get_user_device_or_404(db, user.id, device_id)
 
     sch = (
@@ -488,6 +495,11 @@ def set_auto_update(
         .one_or_none()
     )
     if not sch:
+        logger.info(
+            "auto-update config missing | user_id=%s | device_id=%s | action=create",
+            user.id,
+            dev.id,
+        )
         sch = AutoUpdateSchedule(
             device_id=dev.id,
             enabled=req.enabled,
@@ -497,6 +509,11 @@ def set_auto_update(
             last_error=None,
         )
     else:
+        logger.info(
+            "auto-update config found | user_id=%s | device_id=%s | action=update",
+            user.id,
+            dev.id,
+        )
         sch.enabled = req.enabled
         sch.interval_minutes = req.interval_minutes
 
@@ -505,6 +522,13 @@ def set_auto_update(
     db.refresh(sch)
 
     rebuild_jobs_from_db()
+    logger.info(
+        "set auto-update success | user_id=%s | device_id=%s | enabled=%s | interval_minutes=%s",
+        user.id,
+        dev.id,
+        sch.enabled,
+        sch.interval_minutes,
+    )
 
     return AutoUpdateConfig(
         enabled=sch.enabled,
