@@ -17,5 +17,8 @@ class Settings(BaseSettings):
     cors_allow_origins: List[str] = []
     log_level: str = "INFO"
 
+    scheduler_enabled: bool = False
+    scheduler_interval: int = 1440
+
 
 settings = Settings()

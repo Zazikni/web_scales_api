@@ -173,8 +173,8 @@ def create_device(
 
     sch = AutoUpdateSchedule(
         device_id=dev.id,
-        enabled=False,
-        interval_minutes=1440,
+        enabled=settings.scheduler_enabled,
+        interval_minutes=settings.scheduler_interval,
         last_run_utc=None,
         last_status=None,
         last_error=None,
@@ -278,7 +278,10 @@ def delete_device(
         user.id,
         device_id,
     )
-    rebuild_jobs_from_db()
+    if settings.scheduler_enabled:
+        rebuild_jobs_from_db()
+    else:
+        logger.info("scheduler disabled | skip rebuild_jobs_from_db")
     return None
 
 
