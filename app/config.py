@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = False
     scheduler_interval: int = 1440
+    products_fix_mode: bool = False
 
 
 settings = Settings()
