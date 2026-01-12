@@ -21,5 +21,11 @@ class Settings(BaseSettings):
     scheduler_interval: int = 1440
     products_fix_mode: bool = False
 
+    auto_reconnect: bool = False
+    connect_timeout: float = 3.0
+    default_timeout: float = 5.0
+    retries: int = 2
+    retry_delay: float = 5.0
+
 
 settings = Settings()

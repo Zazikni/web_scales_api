@@ -68,12 +68,11 @@ def get_scales(device: Device) -> Scales:
         device.ip,
         device.port,
         password,
-        device.protocol,
-        auto_reconnect=True,
-        connect_timeout=3.0,
-        default_timeout=5.0,
-        retries=2,
-        retry_delay=0.5,
+        auto_reconnect=settings.auto_reconnect,
+        connect_timeout=settings.connect_timeout,
+        default_timeout=settings.default_timeout,
+        retries=settings.retries,
+        retry_delay=settings.retry_delay,
     )
 
 
