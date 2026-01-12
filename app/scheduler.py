@@ -57,16 +57,16 @@ def auto_update_job(device_id: int) -> None:
         if not sch or not sch.enabled:
             return
 
-        # fetch from device → cache (dirty=false)
+        # Обновление кэша товаров
         products = fetch_products_and_cache(db, device)
 
-        # update only dates → cache (dirty=false, because we will push right away)
+        # обновление дат и сохранение обновленных данных в кэш
         products = update_dates_only(products)
         save_cached_products(db, device, products, dirty=False)
 
-        # push back to device
+        # Обновление товаров в устройстве
         push_cache_to_scales(db, device)
-
+        # Фиксация результата операции
         sch.last_run_utc = utc_now_str()
         sch.last_status = "OK"
         sch.last_error = None
