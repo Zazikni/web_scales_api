@@ -17,13 +17,12 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-
 class DeviceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=500)
     ip: str = Field(min_length=1, max_length=64)
     port: int = Field(ge=1, le=65535, default=1111)
-    protocol: str = Field(pattern="^(TCP|UDP)$", default="TCP")
+    protocol: str = Field(pattern="^(TCP)$", default="TCP")
     password: str = Field(min_length=1, max_length=64)
 
 
@@ -32,7 +31,7 @@ class DeviceUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     ip: str | None = Field(default=None, min_length=1, max_length=64)
     port: int | None = Field(default=None, ge=1, le=65535)
-    protocol: str | None = Field(default=None, pattern="^(TCP|UDP)$")
+    protocol: str | None = Field(default=None, pattern="^(TCP)$")
     password: str | None = Field(default=None, min_length=1, max_length=64)
 
 
@@ -49,7 +48,6 @@ class DeviceOut(BaseModel):
         from_attributes = True
 
 
-
 class ProductsResponse(BaseModel):
     products: Any  # полный JSON от весов
 
@@ -60,7 +58,7 @@ class ProductPatchRequest(BaseModel):
 
 class AutoUpdateConfig(BaseModel):
     enabled: bool
-    interval_minutes: int = Field(ge=1, le=24 * 60)
+    interval_minutes: int = Field(ge=1)
     last_run_utc: str | None = None
     last_status: str | None = None
     last_error: str | None = None

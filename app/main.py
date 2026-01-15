@@ -78,7 +78,6 @@ def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
         .one_or_none()
     )
     if not dev:
-        # 404 всегда, чтобы пользователь не мог отличить “не моё” от “не существует”
         raise HTTPException(status_code=404, detail="Device not found")
     return dev
 
@@ -458,7 +457,7 @@ def get_auto_update(
         sch = AutoUpdateSchedule(
             device_id=dev.id,
             enabled=False,
-            interval_minutes=60,
+            interval_minutes=settings.scheduler_interval,
             last_run_utc=None,
             last_status=None,
             last_error=None,
