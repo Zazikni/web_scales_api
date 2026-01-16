@@ -20,7 +20,7 @@ from .schemas import (
 )
 from .security import hash_password, verify_password, create_access_token
 from .deps import get_current_user
-from .scales_client import (
+from .services import (
     encrypt_device_password,
     fetch_products_and_cache,
     push_cache_to_scales,

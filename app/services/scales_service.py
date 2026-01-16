@@ -1,27 +1,23 @@
 from __future__ import annotations
 
-import json
-import time
-from contextlib import contextmanager
-from typing import Any, Iterator
-
-from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session
-
-from .config import settings
-from .models import Device
-from .services import load_cached_products, save_cached_products
-from scales import Scales
-from scales.exceptions import DeviceError
-import logging
-
 import copy
 import json
+import logging
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, List, Dict, Tuple, Optional
+from typing import Iterator
 
+from cryptography.fernet import Fernet
+from scales import Scales
+from scales.exceptions import DeviceError
+from sqlalchemy.orm import Session
+
+from .products_cache_service import load_cached_products, save_cached_products
+from ..config import settings
+from ..models import Device
 
 logger = logging.getLogger("app.scales_client")
 
@@ -31,8 +27,7 @@ _fernet = Fernet(settings.fernet_key.encode("utf-8"))
 @contextmanager
 def _timed(op: str, **fields: Any) -> Iterator[None]:
     """
-    Контекстный менеджер для логирования старта/успеха/ошибки операции
-    с измерением длительности.
+    Контекстный менеджер для логирования операции с измерением длительности.
     """
     start = time.perf_counter()
     logger.info("start %s | %s", op, fields)
@@ -74,8 +69,6 @@ def get_scales(device: Device) -> Scales:
         retries=settings.retries,
         retry_delay=settings.retry_delay,
     )
-
-
 
 
 def validate_plu_uniqueness(products: dict) -> None:
@@ -410,11 +403,9 @@ def find_products_breaking_upload(
     """
     Главная функция.
 
-    upload_fn: функция, которая отправляет payload в весы и:
-      - НЕ бросает исключение при успехе
-      - бросает исключение при неуспехе
+    Функция, которая отправляет payload в весы и бросает исключение при неудаче
 
-    full_payload: ваш JSON (как в ProductData.json), где есть ключ "products": [...] :contentReference[oaicite:1]{index=1}
+    full_payload: JSON (как в ProductData.json), где есть ключ "products": [...] :contentReference[oaicite:1]{index=1}
 
     Алгоритм:
       1) Идём пачками, чтобы быстро локализовать проблемный сегмент.
