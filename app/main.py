@@ -30,7 +30,12 @@ from .services import (
     push_cache_to_scales,
 )
 from .services import load_cached_products, save_cached_products
-from .scheduler import scheduler, rebuild_jobs_from_db
+from .services.scheduler_service import (
+    scheduler,
+    scheduler_rebuild_jobs_from_db,
+    scheduler_start,
+    scheduler_shutdown,
+)
 from .logging_config import setup_logging
 from scales.exceptions import DeviceError
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,13 +70,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    scheduler.start()
-    rebuild_jobs_from_db()
+    scheduler_start()
+    scheduler_rebuild_jobs_from_db()
 
 
 @app.on_event("shutdown")
 def shutdown():
-    scheduler.shutdown(wait=False)
+    scheduler_shutdown()
 
 
 def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
@@ -189,7 +194,7 @@ def create_device(
         dev.id,
         dev.name,
     )
-    rebuild_jobs_from_db()
+    scheduler_rebuild_jobs_from_db()
     return dev
 
 
@@ -281,7 +286,7 @@ def delete_device(
         device_id,
     )
     if settings.scheduler_enabled:
-        rebuild_jobs_from_db()
+        scheduler_rebuild_jobs_from_db()
     else:
         logger.info("scheduler disabled | skip rebuild_jobs_from_db")
     return None
@@ -532,7 +537,7 @@ def set_auto_update(
     db.commit()
     db.refresh(sch)
 
-    rebuild_jobs_from_db()
+    scheduler_rebuild_jobs_from_db()
     logger.info(
         "set auto-update success | user_id=%s | device_id=%s | enabled=%s | interval_minutes=%s",
         user.id,

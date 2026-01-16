@@ -27,5 +27,7 @@ class Settings(BaseSettings):
     retries: int = 2
     retry_delay: float = 5.0
 
+    scheduler_service_enabled: bool = True
+
 
 settings = Settings()
