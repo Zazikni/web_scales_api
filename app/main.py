@@ -18,10 +18,14 @@ from .schemas import (
     ProductPatchRequest,
     AutoUpdateConfig,
 )
-from .security import hash_password, verify_password, create_access_token
+from .security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    encrypt_device_password,
+)
 from .deps import get_current_user
 from .services import (
-    encrypt_device_password,
     fetch_products_and_cache,
     push_cache_to_scales,
 )

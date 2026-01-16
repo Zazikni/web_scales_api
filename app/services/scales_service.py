@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, List, Dict, Tuple, Optional
 from typing import Iterator
 
-from cryptography.fernet import Fernet
+
 from scales import Scales
 from scales.exceptions import DeviceError
 from sqlalchemy.orm import Session
@@ -18,10 +18,9 @@ from sqlalchemy.orm import Session
 from .products_cache_service import load_cached_products, save_cached_products
 from ..config import settings
 from ..models import Device
+from ..security import decrypt_device_password
 
 logger = logging.getLogger("app.scales_client")
-
-_fernet = Fernet(settings.fernet_key.encode("utf-8"))
 
 
 @contextmanager
@@ -39,14 +38,6 @@ def _timed(op: str, **fields: Any) -> Iterator[None]:
         dur_ms = int((time.perf_counter() - start) * 1000)
         logger.exception("fail %s | duration_ms=%s | %s", op, dur_ms, fields)
         raise
-
-
-def encrypt_device_password(password: str) -> str:
-    return _fernet.encrypt(password.encode("utf-8")).decode("utf-8")
-
-
-def decrypt_device_password(password_encrypted: str) -> str:
-    return _fernet.decrypt(password_encrypted.encode("utf-8")).decode("utf-8")
 
 
 def get_scales(device: Device) -> Scales:
