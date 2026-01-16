@@ -1,16 +1,17 @@
-from fastapi import FastAPI, HTTPException
-from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import Depends
-
 import logging
+
+from fastapi import Depends
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from scales.exceptions import DeviceError
+from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db
+from .deps import get_current_user
+from .logging_config import setup_logging
 from .models import User, Device, AutoUpdateSchedule
 from .schemas import (
-    RegisterRequest,
-    TokenResponse,
     DeviceCreate,
     DeviceUpdate,
     DeviceOut,
@@ -19,27 +20,20 @@ from .schemas import (
     AutoUpdateConfig,
 )
 from .security import (
-    hash_password,
-    verify_password,
-    create_access_token,
     encrypt_device_password,
 )
-from .deps import get_current_user
 from .services import (
     fetch_products_and_cache,
     push_cache_to_scales,
 )
 from .services import load_cached_products, save_cached_products
 from .services.scheduler_service import (
-    scheduler,
     scheduler_rebuild_jobs_from_db,
     scheduler_start,
     scheduler_shutdown,
 )
-from .logging_config import setup_logging
-from scales.exceptions import DeviceError
-from fastapi.middleware.cors import CORSMiddleware
 
+from .api.router import api_router
 
 setup_logging(settings.log_level)
 logger = logging.getLogger("app.main")
@@ -56,6 +50,8 @@ app = FastAPI(
 logger.info("Application started")
 logger.info("CORS origins: %s", settings.cors_allow_origins)
 logger.info("Database URL: %s", settings.database_url)
+
+app.include_router(api_router)
 
 origins = settings.cors_allow_origins
 
@@ -88,41 +84,6 @@ def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
     if not dev:
         raise HTTPException(status_code=404, detail="Device not found")
     return dev
-
-
-@app.post("/auth/register", status_code=201)
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    exists = db.query(User).filter(User.email == req.email).one_or_none()
-    if exists:
-        logger.warning("register failed | email=%s | reason=email_taken", req.email)
-        raise HTTPException(status_code=409, detail="Email already registered")
-
-    user = User(email=req.email, password_hash=hash_password(req.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    logger.info("register success | user_id=%s | email=%s", user.id, user.email)
-    return {"id": user.id, "email": user.email}
-
-
-@app.post("/auth/login", response_model=TokenResponse)
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
-):
-    user = db.query(User).filter(User.email == form_data.username).one_or_none()
-    if not user or not verify_password(form_data.password, user.password_hash):
-        logger.warning(
-            "login failed | email=%s",
-            form_data.username,
-        )
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
-    logger.info(
-        "login success | user_id=%s",
-        user.id,
-    )
-    token = create_access_token(str(user.id))
-    return TokenResponse(access_token=token)
 
 
 # ---------- devices ----------
