@@ -10,8 +10,8 @@ from .models import AutoUpdateSchedule, Device
 from .scales_client import (
     fetch_products_and_cache,
     push_cache_to_scales,
-    save_cached_products,
 )
+from .services import save_cached_products
 from scales.exceptions import DeviceError
 import logging
 

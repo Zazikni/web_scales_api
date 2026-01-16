@@ -23,10 +23,9 @@ from .deps import get_current_user
 from .scales_client import (
     encrypt_device_password,
     fetch_products_and_cache,
-    load_cached_products,
-    save_cached_products,
     push_cache_to_scales,
 )
+from .services import load_cached_products, save_cached_products
 from .scheduler import scheduler, rebuild_jobs_from_db
 from .logging_config import setup_logging
 from scales.exceptions import DeviceError
