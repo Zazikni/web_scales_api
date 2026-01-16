@@ -75,17 +75,6 @@ def shutdown():
     scheduler_shutdown()
 
 
-def get_user_device_or_404(db: Session, user_id: int, device_id: int) -> Device:
-    dev = (
-        db.query(Device)
-        .filter(Device.id == device_id, Device.owner_id == user_id)
-        .one_or_none()
-    )
-    if not dev:
-        raise HTTPException(status_code=404, detail="Device not found")
-    return dev
-
-
 # ---------- devices ----------
 
 
