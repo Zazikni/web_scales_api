@@ -11,14 +11,13 @@ from typing import Any, Callable, Iterable, List, Dict, Tuple, Optional
 from typing import Iterator
 
 
-from scales import Scales
 from scales.exceptions import DeviceError
+from ..integrations.mertech import get_scales
 from sqlalchemy.orm import Session
 
 from .products_cache_service import load_cached_products, save_cached_products
 from ..config import settings
 from ..models import Device
-from ..security import decrypt_device_password
 
 logger = logging.getLogger("app.scales_client")
 
@@ -38,28 +37,6 @@ def _timed(op: str, **fields: Any) -> Iterator[None]:
         dur_ms = int((time.perf_counter() - start) * 1000)
         logger.exception("fail %s | duration_ms=%s | %s", op, dur_ms, fields)
         raise
-
-
-def get_scales(device: Device) -> Scales:
-    password = decrypt_device_password(device.password_encrypted)
-    device_id = getattr(device, "id", None)
-    logger.debug(
-        "create scales client | device_id=%s | ip=%s | port=%s | protocol=%s",
-        device_id,
-        device.ip,
-        device.port,
-        device.protocol,
-    )
-    return Scales(
-        device.ip,
-        device.port,
-        password,
-        auto_reconnect=settings.auto_reconnect,
-        connect_timeout=settings.connect_timeout,
-        default_timeout=settings.default_timeout,
-        retries=settings.retries,
-        retry_delay=settings.retry_delay,
-    )
 
 
 def validate_plu_uniqueness(products: dict) -> None:
