@@ -1,23 +1,15 @@
 import logging
 from datetime import datetime, timedelta
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 
-from .config import settings
-from .db import SessionLocal
-from .models import AutoUpdateSchedule, Device
-from .scales_client import (
-    fetch_products_and_cache,
-    push_cache_to_scales,
-    save_cached_products,
-)
 from scales.exceptions import DeviceError
-import logging
 
-logger = logging.getLogger("app.scheduler")
+from ..db import SessionLocal
+from ..models import AutoUpdateSchedule, Device
+from . import fetch_products_and_cache, push_cache_to_scales, save_cached_products
 
-scheduler = BackgroundScheduler(timezone=settings.scheduler_timezone)
+logger = logging.getLogger("app.auto_update")
 
 
 def utc_now_str() -> str:
@@ -43,6 +35,9 @@ def update_dates_only(products: dict) -> dict:
 
 
 def auto_update_job(device_id: int) -> None:
+    """
+    Выполнение одного прогона автоматического обновления по device_id.
+    """
     db: Session = SessionLocal()
     try:
         device = db.get(Device, device_id)
@@ -66,6 +61,7 @@ def auto_update_job(device_id: int) -> None:
 
         # Обновление товаров в устройстве
         push_cache_to_scales(db, device)
+
         # Фиксация результата операции
         sch.last_run_utc = utc_now_str()
         sch.last_status = "OK"
@@ -103,29 +99,5 @@ def auto_update_job(device_id: int) -> None:
             db.commit()
         logger.exception("Auto-update unexpected device_id=%d: %s", device_id, e)
 
-    finally:
-        db.close()
-
-
-def rebuild_jobs_from_db() -> None:
-    db: Session = SessionLocal()
-    try:
-        schedules = db.query(AutoUpdateSchedule).all()
-        for sch in schedules:
-            job_id = f"auto_update:{sch.device_id}"
-            if scheduler.get_job(job_id):
-                scheduler.remove_job(job_id)
-
-            if sch.enabled:
-                scheduler.add_job(
-                    auto_update_job,
-                    "interval",
-                    minutes=sch.interval_minutes,
-                    args=[sch.device_id],
-                    id=job_id,
-                    replace_existing=True,
-                    max_instances=1,
-                    coalesce=True,
-                )
     finally:
         db.close()

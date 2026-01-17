@@ -1,20 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Any
-
-
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-
-
-# class LoginRequest(BaseModel):
-#     email: EmailStr
-#     password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+from pydantic import BaseModel, Field
 
 
 class DeviceCreate(BaseModel):
@@ -46,19 +30,3 @@ class DeviceOut(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class ProductsResponse(BaseModel):
-    products: Any  # полный JSON от весов
-
-
-class ProductPatchRequest(BaseModel):
-    fields: dict[str, Any]
-
-
-class AutoUpdateConfig(BaseModel):
-    enabled: bool
-    interval_minutes: int = Field(ge=1)
-    last_run_utc: str | None = None
-    last_status: str | None = None
-    last_error: str | None = None

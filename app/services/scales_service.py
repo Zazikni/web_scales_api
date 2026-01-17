@@ -1,38 +1,31 @@
 from __future__ import annotations
 
-import json
-import time
-from contextlib import contextmanager
-from typing import Any, Iterator
-
-from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session
-
-from .config import settings
-from .models import Device
-
-from scales import Scales
-from scales.exceptions import DeviceError
-import logging
-
 import copy
 import json
+import logging
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, List, Dict, Tuple, Optional
+from typing import Iterator
 
+
+from scales.exceptions import DeviceError
+from ..integrations.mertech import get_scales
+from sqlalchemy.orm import Session
+
+from .products_cache_service import load_cached_products, save_cached_products
+from ..config import settings
+from ..models import Device
 
 logger = logging.getLogger("app.scales_client")
-
-_fernet = Fernet(settings.fernet_key.encode("utf-8"))
 
 
 @contextmanager
 def _timed(op: str, **fields: Any) -> Iterator[None]:
     """
-    Контекстный менеджер для логирования старта/успеха/ошибки операции
-    с измерением длительности.
+    Контекстный менеджер для логирования операции с измерением длительности.
     """
     start = time.perf_counter()
     logger.info("start %s | %s", op, fields)
@@ -44,82 +37,6 @@ def _timed(op: str, **fields: Any) -> Iterator[None]:
         dur_ms = int((time.perf_counter() - start) * 1000)
         logger.exception("fail %s | duration_ms=%s | %s", op, dur_ms, fields)
         raise
-
-
-def encrypt_device_password(password: str) -> str:
-    return _fernet.encrypt(password.encode("utf-8")).decode("utf-8")
-
-
-def decrypt_device_password(password_encrypted: str) -> str:
-    return _fernet.decrypt(password_encrypted.encode("utf-8")).decode("utf-8")
-
-
-def get_scales(device: Device) -> Scales:
-    password = decrypt_device_password(device.password_encrypted)
-    device_id = getattr(device, "id", None)
-    logger.debug(
-        "create scales client | device_id=%s | ip=%s | port=%s | protocol=%s",
-        device_id,
-        device.ip,
-        device.port,
-        device.protocol,
-    )
-    return Scales(
-        device.ip,
-        device.port,
-        password,
-        auto_reconnect=settings.auto_reconnect,
-        connect_timeout=settings.connect_timeout,
-        default_timeout=settings.default_timeout,
-        retries=settings.retries,
-        retry_delay=settings.retry_delay,
-    )
-
-
-def load_cached_products(device: Device) -> dict:
-    device_id = getattr(device, "id", None)
-    if not device.products_cache_json:
-        logger.info("products_cache miss | device_id=%s", device_id)
-        return {"products": []}
-
-    try:
-        data = json.loads(device.products_cache_json)
-        products_count = (
-            len(data.get("products", [])) if isinstance(data, dict) else "n/a"
-        )
-        logger.info(
-            "products_cache hit | device_id=%s | cached_dirty=%s | count=%s",
-            device_id,
-            getattr(device, "cached_dirty", None),
-            products_count,
-        )
-        return data
-    except Exception:
-        logger.exception("products_cache parse failed | device_id=%s", device_id)
-        raise
-
-
-def save_cached_products(
-    db: Session, device: Device, products: dict, *, dirty: bool
-) -> None:
-    device_id = getattr(device, "id", None)
-    try:
-        device.products_cache_json = json.dumps(products, ensure_ascii=False)
-    except Exception:
-        logger.exception(
-            "products_cache serialize failed | device_id=%s",
-            device_id,
-        )
-        raise
-    device.cached_dirty = dirty
-    db.add(device)
-    db.commit()
-    db.refresh(device)
-    logger.info(
-        "products_cache saved | device_id=%s | dirty=%s",
-        device_id,
-        dirty,
-    )
 
 
 def validate_plu_uniqueness(products: dict) -> None:
@@ -454,11 +371,9 @@ def find_products_breaking_upload(
     """
     Главная функция.
 
-    upload_fn: функция, которая отправляет payload в весы и:
-      - НЕ бросает исключение при успехе
-      - бросает исключение при неуспехе
+    Функция, которая отправляет payload в весы и бросает исключение при неудаче
 
-    full_payload: ваш JSON (как в ProductData.json), где есть ключ "products": [...] :contentReference[oaicite:1]{index=1}
+    full_payload: JSON (как в ProductData.json), где есть ключ "products": [...] :contentReference[oaicite:1]{index=1}
 
     Алгоритм:
       1) Идём пачками, чтобы быстро локализовать проблемный сегмент.

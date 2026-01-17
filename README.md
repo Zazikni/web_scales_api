@@ -35,23 +35,56 @@ Backend-сервис предоставляет REST API для управлен
 ## Структура репозитория
 
 ```
-backend/
-├── app/                         # Код backend-сервиса
-│   ├── main.py                  # Точка входа FastAPI, middleware, маршруты
-│   ├── config.py                # Конфигурация приложения
-│   ├── db.py                    # Инициализация базы данных и сессий
-│   ├── models.py                # ORM-модели
-│   ├── schemas.py               # Pydantic-схемы запросов и ответов
-│   ├── security.py              # JWT, хеширование паролей, безопасность
-│   ├── deps.py                  # Зависимости FastAPI 
-│   ├── scales_client.py         # Работа с весами и кэшем товаров
-│   ├── logging_config.py        # Конфигурация логирования
-│   └── scheduler.py             # Планировщик фоновых задач
+web_scales_api/
+├── app/
+│ ├── main.py # создание FastAPI, CORS, include_router, startup/shutdown
+│ ├── config.py # Settings (.env) через pydantic-settings
+│ ├── logging_config.py # настройка логирования
+│ ├── deps.py # зависимости FastAPI (DB, auth и т.п.)
+│ │
+│ ├── api/
+│ │ ├── router.py # корневой APIRouter, include subrouters
+│ │ └── v1/
+│ │ ├── auth.py # /auth/*
+│ │ ├── devices.py # /devices/*
+│ │ ├── products.py # /devices/{id}/products*, /devices/{id}/upload
+│ │ └── auto_update.py # /devices/{id}/auto-update
+│ │
+│ ├── db/
+│ │ ├── base.py # Base для моделей SQLAlchemy
+│ │ └── session.py # engine + SessionLocal
+│ │
+│ ├── models/
+│ │ ├── user.py # ORM User
+│ │ ├── device.py # ORM Device
+│ │ └── schedule.py # ORM AutoUpdateSchedule
+│ │
+│ ├── schemas/
+│ │ ├── auth.py # Pydantic-схемы auth
+│ │ ├── device.py # схемы устройств
+│ │ ├── products.py # схемы кэша/патча товаров
+│ │ └── auto_update.py # схемы автообновления
+│ │
+│ ├── security/
+│ │ ├── jwt.py # encode/decode JWT
+│ │ ├── password.py # hash/verify паролей пользователей
+│ │ └── fernet.py # encrypt/decrypt пароля устройства
+│ │
+│ ├── services/
+│ │ ├── scales_service.py # fetch/push: взаимодействие с весами
+│ │ ├── products_cache_service.py # работа с кэшем: load/save/patch/validate
+│ │ ├── auto_update_service.py # логика auto-update (обновление дат и пр.)
+│ │ └── scheduler_service.py # управление APScheduler (start/shutdown/rebuild)
+│ │
+│ └── integrations/
+│ └── mertech/
+│ └── client.py # get_scales(): фабрика клиента весов
 │
-├── requirements.txt             # Зависимости Python
-├── .env.example                 # Пример файла переменных окружения
-├── .gitignore                   # Исключения для Git
-└── README.md                    # Документация backend-сервиса
+├── app.db
+├── requirements.txt
+├── .env.example
+├── .env
+└── README.md
 ```
 
 ---
@@ -65,7 +98,7 @@ git clone https://github.com/Zazikni/web_scales_api
 ```
 
 ```bash
-cd backend
+cd web_scales_api
 ```
 
 ## Создание виртуального окружения
@@ -76,16 +109,10 @@ python -m venv .venv
 
 ## Активация виртуального окружения
 
-### Windows (PowerShell)
+### Windows
 
 ```powershell
 .\.venv\Scripts\activate
-```
-
-### Linux / macOS
-
-```bash
-source .venv/bin/activate
 ```
 
 ## Установка зависимостей
@@ -93,19 +120,18 @@ source .venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
-
 ## Настройка переменных окружения
 
+Windows
 ```bash
-cp .env.example .env
+copy .env.example .env
 ```
-
 Заполнить необходимые параметры в файле `.env`.
 
 ## Запуск backend-сервиса
 
 ```bash
-uvicorn app.main:app --port 8000
+uvicorn app.main:app
 ```
 
 Backend-сервис будет доступен по адресу:
@@ -114,7 +140,7 @@ Backend-сервис будет доступен по адресу:
 http://127.0.0.1:8000
 ```
 
-Swagger-документация (при `DEBUG=true`):
+Swagger-документация (при `.env DEBUG=true`):
 
 ```
 http://127.0.0.1:8000/docs

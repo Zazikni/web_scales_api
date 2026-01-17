@@ -1,0 +1,12 @@
+from fastapi import APIRouter
+
+from .v1.auth import router as auth_router
+from .v1.devices import router as devices_router
+from .v1.products import router as product_router
+from .v1.auto_update import router as auto_update_router
+
+api_router = APIRouter()
+api_router.include_router(auth_router)
+api_router.include_router(devices_router)
+api_router.include_router(product_router)
+api_router.include_router(auto_update_router)
