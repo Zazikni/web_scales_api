@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     default_timeout: float = 5.0
     retries: int = 2
     retry_delay: float = 5.0
+    clear_database_while_updating_products: bool = False
+    clear_database_while_updating_products_fix_mode: bool = False
 
     scheduler_service_enabled: bool = True
 
