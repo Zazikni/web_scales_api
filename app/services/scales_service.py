@@ -128,7 +128,9 @@ def push_cache_to_scales(db: Session, device: Device) -> None:
         validate_plu_uniqueness(products)
 
         try:
-            scales.send_json_products(products)
+            scales.send_json_products(
+                products, clear_database=settings.clear_database_while_updating_products
+            )
         except DeviceError as e:
             if settings.products_fix_mode:
                 logger.warning(
@@ -198,7 +200,10 @@ def diagnose_broken_product(device: Device, products_payload: dict) -> None:
             # Новый клиент на каждую попытку (важно!)
             scales = get_scales(device)
 
-            scales.send_json_products(single_payload)
+            scales.send_json_products(
+                single_payload,
+                clear_database=settings.clear_database_while_updating_products_fix_mode,
+            )
 
             logger.info("diagnostic upload OK | index=%s | pluNumber=%s", idx, plu)
 
